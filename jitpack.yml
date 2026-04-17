@@ -2,4 +2,4 @@ jdk:
   - openjdk17
 install:
   - chmod +x gradlew
-  - ./gradlew :tooltiptour:build
+  - ./gradlew :tooltiptour:assembleRelease :tooltiptour:publishToMavenLocal
