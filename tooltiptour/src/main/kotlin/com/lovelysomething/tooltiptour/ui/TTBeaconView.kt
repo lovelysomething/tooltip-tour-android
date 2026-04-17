@@ -36,6 +36,7 @@ fun TTBeaconView(
     color: Color = Color(0xFF3730A3.toInt()),
     labelColor: Color = Color.White,
     isActive: Boolean = true,
+    modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
     val sizeDp: Dp = when (style) {
@@ -70,7 +71,7 @@ fun TTBeaconView(
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier
+        modifier = modifier
             .size(sizeDp)
             .then(
                 if (onClick != null) Modifier.clickable(

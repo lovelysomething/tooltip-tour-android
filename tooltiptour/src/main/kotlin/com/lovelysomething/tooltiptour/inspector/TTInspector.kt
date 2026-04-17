@@ -30,10 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModelStoreOwner
-import androidx.lifecycle.ViewTreeLifecycleOwner
-import androidx.lifecycle.ViewTreeViewModelStoreOwner
-import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.lovelysomething.tooltiptour.networking.TTNetworkClient
 import com.lovelysomething.tooltiptour.registry.TTViewRegistry
 import kotlinx.coroutines.*
@@ -72,12 +68,6 @@ internal class TTInspector(
     fun start(activity: Activity) {
         currentActivity = activity
         val view = ComposeView(activity).apply {
-            val lifecycle = activity as? androidx.lifecycle.LifecycleOwner
-            if (lifecycle != null) ViewTreeLifecycleOwner.set(this, lifecycle)
-            val vmso = activity as? ViewModelStoreOwner
-            if (vmso != null) ViewTreeViewModelStoreOwner.set(this, vmso)
-            val ssro = activity as? androidx.savedstate.SavedStateRegistryOwner
-            if (ssro != null) setViewTreeSavedStateRegistryOwner(ssro)
             setViewCompositionStrategy(
                 androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
             )

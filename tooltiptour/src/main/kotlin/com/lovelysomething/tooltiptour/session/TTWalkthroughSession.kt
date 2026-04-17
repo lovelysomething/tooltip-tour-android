@@ -14,11 +14,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.*
-import androidx.savedstate.findViewTreeSavedStateRegistryOwner
-import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.lovelysomething.tooltiptour.models.TTConfig
 import com.lovelysomething.tooltiptour.networking.TTEventTracker
 import com.lovelysomething.tooltiptour.networking.TTEventType
@@ -62,23 +60,9 @@ internal class TTWalkthroughSession(
 
     private fun attachOverlay(activity: Activity) {
         val view = ComposeView(activity).apply {
-            // Wire up lifecycle so Compose works when added programmatically
-            val lifecycle = activity as? LifecycleOwner
-            if (lifecycle != null) {
-                ViewTreeLifecycleOwner.set(this, lifecycle)
-            }
-            val vmso = activity as? ViewModelStoreOwner
-            if (vmso != null) {
-                ViewTreeViewModelStoreOwner.set(this, vmso)
-            }
-            val ssro = activity.findViewTreeSavedStateRegistryOwner()
-                ?: (activity as? androidx.savedstate.SavedStateRegistryOwner)
-            if (ssro != null) {
-                setViewTreeSavedStateRegistryOwner(ssro)
-            }
-            setViewCompositionStrategy(
-                ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
-            )
+            // ComponentActivity already exposes lifecycle/viewmodel/savedstate via ViewTree —
+            // no manual wiring needed for standard Android setups.
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent { OverlayContent() }
         }
 
