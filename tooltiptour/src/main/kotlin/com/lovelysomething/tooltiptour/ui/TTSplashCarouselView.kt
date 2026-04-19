@@ -1,11 +1,7 @@
 package com.lovelysomething.tooltiptour.ui
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,25 +16,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.lovelysomething.tooltiptour.models.TTSplashCarousel
-import kotlinx.coroutines.launch
 
 /**
  * Full-screen carousel shown before the normal tour welcome card.
- *
- * Supports horizontal (default) and vertical swipe via [TTSplashCarousel.direction].
- * Uses custom DragGesture pager — no dependency on androidx.compose.foundation.pager.
+ * Navigation via dot row, ← Back, and Next → / Done buttons.
  *
  * Callbacks:
- * - [onDone]    — last slide was completed (Next → Done)
+ * - [onDone]    — last slide completed (Done tapped)
  * - [onDismiss] — ✕ dismiss button tapped (any slide)
  */
 @Composable
@@ -50,42 +41,25 @@ fun TTSplashCarouselView(
     val slides = carousel.slides
     if (slides.isEmpty()) { onDone(); return }
 
-    val bgColor    = parseCarouselColor(carousel.bgColor,   Color(0xFF1a1a2e.toInt()))
-    val textColor  = parseCarouselColor(carousel.textColor, Color.White)
-    val isVertical = carousel.direction == "vertical"
-    val pageCount  = slides.size
+    val bgColor   = parseCarouselColor(carousel.bgColor,   Color(0xFF1a1a2e.toInt()))
+    val textColor = parseCarouselColor(carousel.textColor, Color.White)
+    val pageCount = slides.size
     var currentPage by remember { mutableStateOf(0) }
-    val scope       = rememberCoroutineScope()
-
-    fun goTo(index: Int) { currentPage = index.coerceIn(0, pageCount - 1) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(bgColor),
     ) {
-        // ── Swipeable slide area ──────────────────────────────────────────────
-        if (isVertical) {
-            TTCarouselVerticalPager(
-                pageCount   = pageCount,
-                currentPage = currentPage,
-                onPageChange = { goTo(it) },
-                modifier    = Modifier.fillMaxSize(),
-            ) { page ->
-                SlideContent(slides[page].logoUrl, slides[page].imageUrl,
-                    slides[page].title, slides[page].description, textColor)
-            }
-        } else {
-            TTCarouselHorizontalPager(
-                pageCount    = pageCount,
-                currentPage  = currentPage,
-                onPageChange = { goTo(it) },
-                modifier     = Modifier.fillMaxSize(),
-            ) { page ->
-                SlideContent(slides[page].logoUrl, slides[page].imageUrl,
-                    slides[page].title, slides[page].description, textColor)
-            }
-        }
+        // ── Current slide ─────────────────────────────────────────────────────
+        val slide = slides[currentPage]
+        SlideContent(
+            logoUrl     = slide.logoUrl,
+            imageUrl    = slide.imageUrl,
+            title       = slide.title,
+            description = slide.description,
+            textColor   = textColor,
+        )
 
         // ── Dismiss button ────────────────────────────────────────────────────
         Box(
@@ -113,24 +87,28 @@ fun TTSplashCarouselView(
                 .padding(horizontal = 24.dp, vertical = 40.dp),
         ) {
             // Dot row
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 20.dp),
-            ) {
-                repeat(pageCount) { i ->
-                    val active = i == currentPage
-                    Box(
-                        modifier = Modifier
-                            .size(if (active) 10.dp else 7.dp)
-                            .clip(CircleShape)
-                            .background(if (active) textColor else textColor.copy(alpha = 0.35f))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                            ) { goTo(i) },
-                    )
+            if (pageCount > 1) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 20.dp),
+                ) {
+                    repeat(pageCount) { i ->
+                        val active = i == currentPage
+                        Box(
+                            modifier = Modifier
+                                .size(if (active) 10.dp else 7.dp)
+                                .clip(CircleShape)
+                                .background(if (active) textColor else textColor.copy(alpha = 0.35f))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) { currentPage = i },
+                        )
+                    }
                 }
+            } else {
+                Spacer(Modifier.height(30.dp))
             }
 
             // Prev + Next/Done row
@@ -148,7 +126,7 @@ fun TTSplashCarouselView(
                         modifier = Modifier.clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                        ) { goTo(currentPage - 1) },
+                        ) { currentPage-- },
                     )
                 } else {
                     Spacer(Modifier.width(64.dp))
@@ -156,7 +134,7 @@ fun TTSplashCarouselView(
 
                 val isLast = currentPage == pageCount - 1
                 Button(
-                    onClick = { if (isLast) onDone() else goTo(currentPage + 1) },
+                    onClick = { if (isLast) onDone() else currentPage++ },
                     colors  = ButtonDefaults.buttonColors(
                         containerColor = textColor,
                         contentColor   = bgColor,
@@ -168,118 +146,6 @@ fun TTSplashCarouselView(
                         fontWeight = FontWeight.Bold,
                         fontSize   = 14.sp,
                     )
-                }
-            }
-        }
-    }
-}
-
-// ── Custom horizontal pager (DragGesture, no pager API dependency) ─────────────
-
-@Composable
-private fun TTCarouselHorizontalPager(
-    pageCount: Int,
-    currentPage: Int,
-    onPageChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable (page: Int) -> Unit,
-) {
-    BoxWithConstraints(modifier = modifier) {
-        val pageWidth   = constraints.maxWidth.toFloat()
-        val offsetAnim  = remember { Animatable(0f) }
-        val dragOffset  = remember { mutableStateOf(0f) }
-        val scope       = rememberCoroutineScope()
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(pageCount) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            val drag = dragOffset.value
-                            val threshold = pageWidth * 0.25f
-                            scope.launch {
-                                dragOffset.value = 0f
-                                offsetAnim.animateTo(0f, tween(300))
-                                if (drag < -threshold && currentPage < pageCount - 1)
-                                    onPageChange(currentPage + 1)
-                                else if (drag > threshold && currentPage > 0)
-                                    onPageChange(currentPage - 1)
-                            }
-                        },
-                        onDragCancel = {
-                            scope.launch { dragOffset.value = 0f; offsetAnim.animateTo(0f, tween(300)) }
-                        },
-                    ) { _, dragAmount ->
-                        dragOffset.value += dragAmount
-                        scope.launch { offsetAnim.snapTo(dragOffset.value) }
-                    }
-                },
-        ) {
-            for (i in 0 until pageCount) {
-                val pageOffset = (i - currentPage) * pageWidth + offsetAnim.value
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .offset { IntOffset(pageOffset.toInt(), 0) },
-                ) {
-                    content(i)
-                }
-            }
-        }
-    }
-}
-
-// ── Custom vertical pager (DragGesture, no pager API dependency) ───────────────
-
-@Composable
-private fun TTCarouselVerticalPager(
-    pageCount: Int,
-    currentPage: Int,
-    onPageChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable (page: Int) -> Unit,
-) {
-    BoxWithConstraints(modifier = modifier) {
-        val pageHeight  = constraints.maxHeight.toFloat()
-        val offsetAnim  = remember { Animatable(0f) }
-        val dragOffset  = remember { mutableStateOf(0f) }
-        val scope       = rememberCoroutineScope()
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(pageCount) {
-                    detectVerticalDragGestures(
-                        onDragEnd = {
-                            val drag = dragOffset.value
-                            val threshold = pageHeight * 0.25f
-                            scope.launch {
-                                dragOffset.value = 0f
-                                offsetAnim.animateTo(0f, tween(300))
-                                if (drag < -threshold && currentPage < pageCount - 1)
-                                    onPageChange(currentPage + 1)
-                                else if (drag > threshold && currentPage > 0)
-                                    onPageChange(currentPage - 1)
-                            }
-                        },
-                        onDragCancel = {
-                            scope.launch { dragOffset.value = 0f; offsetAnim.animateTo(0f, tween(300)) }
-                        },
-                    ) { _, dragAmount ->
-                        dragOffset.value += dragAmount
-                        scope.launch { offsetAnim.snapTo(dragOffset.value) }
-                    }
-                },
-        ) {
-            for (i in 0 until pageCount) {
-                val pageOffset = (i - currentPage) * pageHeight + offsetAnim.value
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .offset { IntOffset(0, pageOffset.toInt()) },
-                ) {
-                    content(i)
                 }
             }
         }
