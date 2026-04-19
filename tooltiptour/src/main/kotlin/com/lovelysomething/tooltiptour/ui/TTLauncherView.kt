@@ -24,7 +24,7 @@ import com.lovelysomething.tooltiptour.TooltipTour
 import com.lovelysomething.tooltiptour.models.TTConfig
 import com.lovelysomething.tooltiptour.registry.TTPageRegistry
 
-private enum class LauncherState { HIDDEN, WELCOME, FAB }
+private enum class LauncherState { HIDDEN, CAROUSEL, WELCOME, FAB }
 
 /**
  * Launcher composable — add to the root Box of each screen that should show tours.
@@ -49,16 +49,30 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
     var config         by remember { mutableStateOf<TTConfig?>(null) }
     var launcherState  by remember { mutableStateOf(LauncherState.HIDDEN) }
     val scope          = rememberCoroutineScope()
+    var carouselShownThisSession by remember { mutableStateOf(false) }
 
     // Observe inspector-active state so we suppress auto-launch during inspection
     val isInspectorActive by sdk.isInspectorActiveFlow.collectAsState()
 
+    // Observe session-active state — when a session ends, slide the FAB back in
+    val isSessionActive by sdk.isSessionActiveFlow.collectAsState()
+    LaunchedEffect(isSessionActive) {
+        if (!isSessionActive && config != null) {
+            val cfg        = config ?: return@LaunchedEffect
+            val isDismissed = prefs.getBoolean("tt-dismissed-${cfg.id}", false)
+            val showCount  = prefs.getInt("tt-shows-${cfg.id}", 0)
+            val maxReached = cfg.maxShows != null && showCount >= cfg.maxShows
+            if (!isDismissed && !maxReached) launcherState = LauncherState.FAB
+        }
+    }
+
     // Re-evaluate whenever the page changes
     LaunchedEffect(currentPage, isInspectorActive) {
-        if (isInspectorActive) {
-            launcherState = LauncherState.HIDDEN
-            return@LaunchedEffect
-        }
+        // Immediately hide so the old page's launcher doesn't linger during the transition.
+        launcherState = LauncherState.HIDDEN
+
+        if (isInspectorActive) return@LaunchedEffect
+
         val cfg = sdk.loadConfig(currentPage) ?: run {
             config = null
             launcherState = LauncherState.HIDDEN
@@ -70,19 +84,31 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
         val isDismissed  = prefs.getBoolean("tt-dismissed-$id", false)
         val showCount    = prefs.getInt("tt-shows-$id", 0)
         val isMinimised  = sdk.isSessionMinimised(id)
+        val maxReached   = cfg.maxShows != null && showCount >= cfg.maxShows
 
-        if (isDismissed) {
-            launcherState = LauncherState.HIDDEN
-            return@LaunchedEffect
+        android.util.Log.d("TTLauncher", "page=$currentPage maxShows=${cfg.maxShows} showCount=$showCount maxReached=$maxReached isDismissed=$isDismissed isMinimised=$isMinimised")
+
+        // ── Carousel check (fires before welcome card) ────────────────────
+        val carousel = cfg.splashCarousel
+        android.util.Log.d("TTLauncher", "carousel=${carousel != null} slides=${carousel?.slides?.size ?: 0} shownThisSession=$carouselShownThisSession carouselMaxShows=${carousel?.maxShows} carouselShowCount=${prefs.getInt("tt-carousel-shows-$id", 0)}")
+        if (carousel != null && carousel.slides.isNotEmpty() && !carouselShownThisSession) {
+            val carouselShows = prefs.getInt("tt-carousel-shows-$id", 0)
+            val carouselMaxReached = carousel.maxShows?.let { carouselShows >= it } ?: false
+            if (!carouselMaxReached) {
+                prefs.edit().putInt("tt-carousel-shows-$id", carouselShows + 1).apply()
+                carouselShownThisSession = true
+                launcherState = LauncherState.CAROUSEL
+                return@LaunchedEffect
+            }
         }
 
-        if (!cfg.startMinimized && !isMinimised &&
-            (cfg.maxShows == null || showCount < cfg.maxShows)
-        ) {
-            launcherState = LauncherState.WELCOME
-            prefs.edit().putInt("tt-shows-$id", showCount + 1).apply()
-        } else {
-            launcherState = LauncherState.FAB
+        when {
+            isDismissed || maxReached -> launcherState = LauncherState.HIDDEN
+            cfg.startMinimized || isMinimised -> launcherState = LauncherState.FAB
+            else -> {
+                launcherState = LauncherState.WELCOME
+                prefs.edit().putInt("tt-shows-$id", showCount + 1).apply()
+            }
         }
     }
 
@@ -101,7 +127,40 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
     val fabIcon    = TTIcon.from(cfg.styles?.fab?.icon)
     val fabLabel   = cfg.fabLabel ?: "Tour"
 
+    // After carousel completes or is dismissed → fall through to normal tour logic
+    fun continueAfterCarousel() {
+        val id          = cfg.id
+        val isDismissed = prefs.getBoolean("tt-dismissed-$id", false)
+        val showCount   = prefs.getInt("tt-shows-$id", 0)
+        val maxReached  = cfg.maxShows != null && showCount >= cfg.maxShows
+        when {
+            cfg.steps.isEmpty()               -> launcherState = LauncherState.FAB
+            isDismissed || maxReached         -> launcherState = LauncherState.HIDDEN
+            cfg.startMinimized || sdk.isSessionMinimised(id) -> launcherState = LauncherState.FAB
+            else -> {
+                prefs.edit().putInt("tt-shows-$id", showCount + 1).apply()
+                launcherState = LauncherState.WELCOME
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize().then(modifier)) {
+        // ── Carousel (full-screen, fires before welcome card) ──────────────────
+        AnimatedVisibility(
+            visible  = launcherState == LauncherState.CAROUSEL,
+            enter    = slideInVertically(initialOffsetY = { it }) + fadeIn(tween(350)),
+            exit     = slideOutVertically(targetOffsetY = { it }) + fadeOut(tween(250)),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            cfg.splashCarousel?.let { carousel ->
+                TTSplashCarouselView(
+                    carousel  = carousel,
+                    onDone    = { launcherState = LauncherState.HIDDEN; continueAfterCarousel() },
+                    onDismiss = { launcherState = LauncherState.HIDDEN; continueAfterCarousel() },
+                )
+            }
+        }
+
         // ── Welcome card ───────────────────────────────────────────────────────
         AnimatedVisibility(
             visible = launcherState == LauncherState.WELCOME,
@@ -129,8 +188,14 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
         // ── Minimised FAB ──────────────────────────────────────────────────────
         AnimatedVisibility(
             visible = launcherState == LauncherState.FAB,
-            enter   = scaleIn() + fadeIn(tween(250)),
-            exit    = scaleOut() + fadeOut(tween(200)),
+            enter   = slideInHorizontally(
+                initialOffsetX = { if (fabOnLeft) -it else it },
+                animationSpec  = tween(300),
+            ) + fadeIn(tween(250)),
+            exit    = slideOutHorizontally(
+                targetOffsetX = { if (fabOnLeft) -it else it },
+                animationSpec = tween(200),
+            ) + fadeOut(tween(200)),
             modifier = Modifier
                 .align(if (fabOnLeft) Alignment.BottomStart else Alignment.BottomEnd)
                 .padding(
@@ -150,7 +215,12 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                     ) {
-                        launcherState = LauncherState.WELCOME
+                        val showCount  = prefs.getInt("tt-shows-${cfg.id}", 0)
+                        val maxReached = cfg.maxShows != null && showCount >= cfg.maxShows
+                        if (!maxReached) {
+                            prefs.edit().putInt("tt-shows-${cfg.id}", showCount + 1).apply()
+                            launcherState = LauncherState.WELCOME
+                        }
                     },
             ) {
                 androidx.compose.foundation.Canvas(modifier = Modifier.size(22.dp)) {
