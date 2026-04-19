@@ -54,6 +54,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }
 
 afterEvaluate {
@@ -63,7 +64,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "com.github.lovelysomething"
                 artifactId = "tooltip-tour-android"
-                version = "1.0.0"
+                version = "1.1.0"
             }
         }
     }
