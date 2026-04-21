@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -162,6 +163,11 @@ private fun SlideContent(
     description: String?,
     textColor: Color,
 ) {
+    // Logo width = min(50% of screen width, 400dp); height = width / 2 (2:1 ratio)
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp.toFloat()
+    val logoWidthDp   = minOf(screenWidthDp * 0.5f, 400f).dp
+    val logoHeightDp  = logoWidthDp / 2
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -175,7 +181,7 @@ private fun SlideContent(
                 model              = logoUrl,
                 contentDescription = "Logo",
                 contentScale       = ContentScale.Fit,
-                modifier           = Modifier.width(160.dp).height(80.dp),
+                modifier           = Modifier.width(logoWidthDp).height(logoHeightDp),
             )
             Spacer(modifier = Modifier.height(20.dp))
         }
