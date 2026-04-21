@@ -79,10 +79,7 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
         val pageSnap = currentPage
         if (pageSnap != null) {
             val known = sdk.knownPage(prefs, pageSnap)
-            if (known != null) {
-                val dismissed = prefs.getBoolean("tt-dismissed-${known.id}", false)
-                if (!dismissed) launcherState = LauncherState.LOADING
-            }
+            if (known != null) launcherState = LauncherState.LOADING
         }
 
         val cfg = sdk.loadConfig(currentPage) ?: run {
