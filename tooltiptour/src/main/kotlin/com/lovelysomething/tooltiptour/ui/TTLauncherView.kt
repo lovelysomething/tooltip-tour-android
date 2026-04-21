@@ -24,7 +24,7 @@ import com.lovelysomething.tooltiptour.TooltipTour
 import com.lovelysomething.tooltiptour.models.TTConfig
 import com.lovelysomething.tooltiptour.registry.TTPageRegistry
 
-private enum class LauncherState { HIDDEN, CAROUSEL, WELCOME, FAB }
+private enum class LauncherState { HIDDEN, LOADING, CAROUSEL, WELCOME, FAB }
 
 /**
  * Launcher composable — add to the root Box of each screen that should show tours.
@@ -72,6 +72,18 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
         launcherState = LauncherState.HIDDEN
 
         if (isInspectorActive) return@LaunchedEffect
+
+        // ── Eager loading FAB ───────────────────────────────────────────────
+        // If this page was previously known to have a tour (from tt-known-pages) and
+        // hasn't been permanently dismissed, show the FAB with a spinner immediately.
+        val pageSnap = currentPage
+        if (pageSnap != null) {
+            val known = sdk.knownPage(prefs, pageSnap)
+            if (known != null) {
+                val dismissed = prefs.getBoolean("tt-dismissed-${known.id}", false)
+                if (!dismissed) launcherState = LauncherState.LOADING
+            }
+        }
 
         val cfg = sdk.loadConfig(currentPage) ?: run {
             config = null
@@ -144,7 +156,42 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
         }
     }
 
+    // Read loading FAB style from known-pages (only used in LOADING state).
+    val loadingKnown     = currentPage?.let { sdk.knownPage(prefs, it) }
+    val loadingFabOnLeft = loadingKnown?.position == "left"
+    val loadingFabBg     = com.lovelysomething.tooltiptour.models.parseColor(loadingKnown?.bgColor)
+                               ?: Color(0xFF3730A3.toInt())
+
     Box(modifier = Modifier.fillMaxSize().then(modifier)) {
+        // ── Eager loading FAB (shown while config is still fetching) ───────────
+        AnimatedVisibility(
+            visible = launcherState == LauncherState.LOADING,
+            enter   = fadeIn(tween(200)),
+            exit    = fadeOut(tween(200)),
+            modifier = Modifier
+                .align(if (loadingFabOnLeft) Alignment.BottomStart else Alignment.BottomEnd)
+                .padding(
+                    start  = if (loadingFabOnLeft) 20.dp else 0.dp,
+                    end    = if (!loadingFabOnLeft) 20.dp else 0.dp,
+                    bottom = fabBottom,
+                ),
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(fabSize)
+                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(fabRadius))
+                    .clip(RoundedCornerShape(fabRadius))
+                    .background(loadingFabBg),
+            ) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    color       = Color.White,
+                    strokeWidth = 2.dp,
+                    modifier    = Modifier.size(22.dp),
+                )
+            }
+        }
+
         // ── Carousel (full-screen, fires before welcome card) ──────────────────
         AnimatedVisibility(
             visible  = launcherState == LauncherState.CAROUSEL,

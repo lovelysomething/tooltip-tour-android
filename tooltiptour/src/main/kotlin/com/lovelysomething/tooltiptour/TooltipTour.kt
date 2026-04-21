@@ -65,6 +65,7 @@ class TooltipTour private constructor() {
             }
             instance = sdk
             application.registerActivityLifecycleCallbacks(sdk.lifecycleCallbacks)
+            sdk.prefetchAll() // warm the cache immediately so TTLauncherView loads instantly
             return sdk
         }
     }
@@ -87,7 +88,10 @@ class TooltipTour private constructor() {
     /** Session IDs that the user explicitly minimised this session (not persisted). */
     private val sessionMinimisedIds = mutableSetOf<String>()
 
-    // ── Inspector-active observable (read by TTLauncherView) ──────────────────
+    // ── Session / Inspector observables (read by TTLauncherView) ─────────────
+
+    private val _isSessionActive   = MutableStateFlow(false)
+    val isSessionActiveFlow: StateFlow<Boolean> = _isSessionActive.asStateFlow()
 
     private val _isInspectorActive = MutableStateFlow(false)
     val isInspectorActiveFlow: StateFlow<Boolean> = _isInspectorActive.asStateFlow()
@@ -119,6 +123,8 @@ class TooltipTour private constructor() {
         scope.launch {
             val fetched = networkClient?.fetchAllConfigs(siteKey) ?: return@launch
             configCache.putAll(fetched)
+            // Persist page→tour map so the launcher can show a loading FAB next launch.
+            fetched.forEach { (page, config) -> saveKnownPage(page, config) }
         }
     }
 
@@ -128,9 +134,61 @@ class TooltipTour private constructor() {
      */
     suspend fun loadConfig(page: String? = null): TTConfig? {
         if (page != null) configCache[page]?.let { return it }
-        val config = networkClient?.fetchConfig(siteKey, page) ?: return null
-        if (page != null) configCache[page] = config
+        val config = networkClient?.fetchConfig(siteKey, page)
+        if (page != null) {
+            if (config != null) {
+                configCache[page] = config
+                saveKnownPage(page, config)
+            } else {
+                removeKnownPage(page)
+            }
+        }
         return config
+    }
+
+    // ── Known-pages persistence (used by loading FAB) ──────────────────────────
+
+    data class KnownPage(val id: String, val position: String, val bgColor: String)
+
+    private val knownPagesKey = "tt-known-pages"
+
+    fun knownPage(prefs: android.content.SharedPreferences, page: String): KnownPage? {
+        val json = prefs.getString(knownPagesKey, null) ?: return null
+        return try {
+            val obj = org.json.JSONObject(json)
+            if (!obj.has(page)) return null
+            val entry = obj.getJSONObject(page)
+            KnownPage(
+                id       = entry.getString("id"),
+                position = entry.optString("position", "right"),
+                bgColor  = entry.optString("bgColor", "#3730A3"),
+            )
+        } catch (_: Exception) { null }
+    }
+
+    private fun saveKnownPage(page: String, config: TTConfig) {
+        val appContext = currentActivity?.applicationContext ?: return
+        val prefs = appContext.getSharedPreferences("tooltiptour", android.content.Context.MODE_PRIVATE)
+        val map = try {
+            org.json.JSONObject(prefs.getString(knownPagesKey, "{}") ?: "{}")
+        } catch (_: Exception) { org.json.JSONObject() }
+        map.put(page, org.json.JSONObject().apply {
+            put("id",       config.id)
+            put("position", config.styles?.fab?.position ?: "right")
+            put("bgColor",  config.styles?.fab?.bgColor  ?: "#3730A3")
+        })
+        prefs.edit().putString(knownPagesKey, map.toString()).apply()
+    }
+
+    private fun removeKnownPage(page: String) {
+        val appContext = currentActivity?.applicationContext ?: return
+        val prefs = appContext.getSharedPreferences("tooltiptour", android.content.Context.MODE_PRIVATE)
+        val map = try {
+            org.json.JSONObject(prefs.getString(knownPagesKey, "{}") ?: "{}")
+        } catch (_: Exception) { return }
+        if (!map.has(page)) return
+        map.remove(page)
+        prefs.edit().putString(knownPagesKey, map.toString()).apply()
     }
 
     /**
@@ -143,8 +201,10 @@ class TooltipTour private constructor() {
         val session = TTWalkthroughSession(config, siteKey, t, scope)
         session.onEnd = {
             activeSession = null
+            _isSessionActive.value = false
         }
         activeSession = session
+        _isSessionActive.value = true
         session.start(activity)
     }
 
