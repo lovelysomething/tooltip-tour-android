@@ -129,38 +129,15 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
         if (isInspectorActive) launcherState = LauncherState.HIDDEN
     }
 
-    val cfg = config ?: return
-
-    val fabBg      = cfg.styles?.resolvedFabBgColor    ?: Color(0xFF3730A3.toInt())
-    val fabSize    = (cfg.styles?.fab?.size ?: 44.0).dp
-    val fabRadius  = (cfg.styles?.fabCornerRadius ?: 24f).dp
-    val fabOnLeft  = cfg.styles?.fab?.position == "left"
-    val fabBottom  = (cfg.styles?.fab?.bottomOffset ?: 40.0).dp
-    val fabIcon    = TTIcon.from(cfg.styles?.fab?.icon)
-    val fabLabel   = cfg.fabLabel ?: "Tour"
-
-    // After carousel completes or is dismissed → fall through to normal tour logic
-    fun continueAfterCarousel() {
-        val id          = cfg.id
-        val isDismissed = prefs.getBoolean("tt-dismissed-$id", false)
-        val showCount   = prefs.getInt("tt-shows-$id", 0)
-        val maxReached  = cfg.maxShows != null && showCount >= cfg.maxShows
-        when {
-            cfg.steps.isEmpty()               -> launcherState = LauncherState.FAB
-            isDismissed || maxReached         -> launcherState = LauncherState.HIDDEN
-            cfg.startMinimized || sdk.isSessionMinimised(id) -> launcherState = LauncherState.FAB
-            else -> {
-                prefs.edit().putInt("tt-shows-$id", showCount + 1).apply()
-                launcherState = LauncherState.WELCOME
-            }
-        }
-    }
-
-    // Read loading FAB style from known-pages (only used in LOADING state).
+    // Loading FAB style — read from known-pages before config arrives.
     val loadingKnown     = currentPage?.let { sdk.knownPage(prefs, it) }
     val loadingFabOnLeft = loadingKnown?.position == "left"
     val loadingFabBg     = com.lovelysomething.tooltiptour.models.parseColor(loadingKnown?.bgColor)
                                ?: Color(0xFF3730A3.toInt())
+    // Default FAB dimensions used for the loading spinner (real values come from cfg).
+    val defaultFabSize   = 44.dp
+    val defaultFabRadius = 22.dp
+    val defaultFabBottom = 40.dp
 
     Box(modifier = Modifier.fillMaxSize().then(modifier)) {
         // ── Eager loading FAB (shown while config is still fetching) ───────────
@@ -173,15 +150,15 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
                 .padding(
                     start  = if (loadingFabOnLeft) 20.dp else 0.dp,
                     end    = if (!loadingFabOnLeft) 20.dp else 0.dp,
-                    bottom = fabBottom,
+                    bottom = defaultFabBottom,
                 ),
         ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(fabSize)
-                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(fabRadius))
-                    .clip(RoundedCornerShape(fabRadius))
+                    .size(defaultFabSize)
+                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(defaultFabRadius))
+                    .clip(RoundedCornerShape(defaultFabRadius))
                     .background(loadingFabBg),
             ) {
                 androidx.compose.material3.CircularProgressIndicator(
@@ -189,6 +166,34 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
                     strokeWidth = 2.dp,
                     modifier    = Modifier.size(22.dp),
                 )
+            }
+        }
+
+        // Everything below requires the config to be loaded.
+        val cfg = config ?: return@Box
+
+        val fabBg      = cfg.styles?.resolvedFabBgColor    ?: Color(0xFF3730A3.toInt())
+        val fabSize    = (cfg.styles?.fab?.size ?: 44.0).dp
+        val fabRadius  = (cfg.styles?.fabCornerRadius ?: 24f).dp
+        val fabOnLeft  = cfg.styles?.fab?.position == "left"
+        val fabBottom  = (cfg.styles?.fab?.bottomOffset ?: 40.0).dp
+        val fabIcon    = TTIcon.from(cfg.styles?.fab?.icon)
+        val fabLabel   = cfg.fabLabel ?: "Tour"
+
+        // After carousel completes or is dismissed → fall through to normal tour logic
+        fun continueAfterCarousel() {
+            val id          = cfg.id
+            val isDismissed = prefs.getBoolean("tt-dismissed-$id", false)
+            val showCount   = prefs.getInt("tt-shows-$id", 0)
+            val maxReached  = cfg.maxShows != null && showCount >= cfg.maxShows
+            when {
+                cfg.steps.isEmpty()               -> launcherState = LauncherState.FAB
+                isDismissed || maxReached         -> launcherState = LauncherState.HIDDEN
+                cfg.startMinimized || sdk.isSessionMinimised(id) -> launcherState = LauncherState.FAB
+                else -> {
+                    prefs.edit().putInt("tt-shows-$id", showCount + 1).apply()
+                    launcherState = LauncherState.WELCOME
+                }
             }
         }
 
