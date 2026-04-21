@@ -9,16 +9,34 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class TTConfig(
     val id: String,
-    @SerialName("page_pattern") val pagePattern: String? = null,
-    @SerialName("fab_label") val fabLabel: String? = null,
-    @SerialName("welcome_emoji") val welcomeEmoji: String? = null,
-    @SerialName("welcome_title") val welcomeTitle: String? = null,
-    @SerialName("welcome_message") val welcomeMessage: String? = null,
-    @SerialName("auto_open") val autoOpen: Boolean = false,
-    @SerialName("start_minimized") val startMinimized: Boolean = false,
-    @SerialName("max_shows") val maxShows: Int? = null,
+    val pagePattern: String? = null,
+    val fabLabel: String? = null,
+    val welcomeEmoji: String? = null,
+    val welcomeTitle: String? = null,
+    val welcomeMessage: String? = null,
+    val autoOpen: Boolean = false,
+    val startMinimized: Boolean = false,
+    val maxShows: Int? = null,
     val steps: List<TTStep> = emptyList(),
     val styles: TTStyles? = null,
+    val splashCarousel: TTSplashCarousel? = null,
+)
+
+@Serializable
+data class TTSplashCarousel(
+    val slides: List<TTCarouselSlide> = emptyList(),
+    val direction: String = "horizontal",
+    val bgColor: String? = null,
+    val textColor: String? = null,
+    val maxShows: Int? = null,
+)
+
+@Serializable
+data class TTCarouselSlide(
+    val logoUrl: String? = null,
+    val imageUrl: String? = null,
+    val title: String? = null,
+    val description: String? = null,
 )
 
 @Serializable

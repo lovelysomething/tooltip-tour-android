@@ -1,9 +1,11 @@
 package com.lovelysomething.tooltiptour.ui
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import com.lovelysomething.tooltiptour.registry.TTViewRegistry
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -12,17 +14,8 @@ import kotlinx.coroutines.flow.asSharedFlow
  * Scroll bus that lets the walkthrough session scroll content into view.
  *
  * Mirrors iOS TTScrollBus.swift. The SDK writes a target identifier; host-side
- * [Modifier.ttScrollable] wrappers listen and call the appropriate scroll API.
- *
- * Usage (LazyColumn):
- * ```kotlin
- * val listState = rememberLazyListState()
- * LazyColumn(
- *     state = listState,
- *     modifier = Modifier.ttScrollable(listState, indexMap)
- * ) { … }
- * ```
- * where `indexMap` is a Map<String, Int> mapping ttTarget identifiers to list indices.
+ * [Modifier.ttScrollable] / [Modifier.ttScrollableColumn] wrappers listen and
+ * call the appropriate scroll API.
  */
 object TTScrollBus {
 
@@ -35,20 +28,16 @@ object TTScrollBus {
     }
 }
 
-// ── Compose helper ────────────────────────────────────────────────────────────
+// ── LazyColumn helper ─────────────────────────────────────────────────────────
 
 /**
- * Attach to the content of a [LazyListState]-backed list.
+ * Attach to a [LazyListState]-backed list.
  * [indexMap] must map ttTarget identifiers to their item indices.
  *
  * ```kotlin
- * LazyColumn(state = listState) {
- *     items(items, key = { it.id }) { item ->
- *         Row(modifier = Modifier.ttTarget(item.id)) { … }
- *     }
- * }
- * // Then tell the bus how to find each item:
- * LaunchedEffect(items) { ttScrollable(listState, items.mapIndexed { i, it -> it.id to i }.toMap()) }
+ * val listState = rememberLazyListState()
+ * val indexMap  = items.mapIndexed { i, it -> it.id to i }.toMap()
+ * LazyColumn(state = listState, modifier = Modifier.ttScrollable(listState, indexMap)) { … }
  * ```
  */
 @Composable
@@ -57,8 +46,69 @@ fun ttScrollable(state: LazyListState, indexMap: Map<String, Int>) {
         TTScrollBus.events.collect { id ->
             val index = indexMap[id] ?: return@collect
             state.animateScrollToItem(index)
-            // Clear the event after a short delay so the same id can fire again
             delay(50)
         }
     }
+}
+
+// ── Column + verticalScroll helper ────────────────────────────────────────────
+
+/**
+ * Attach to a [ScrollState]-backed Column so the walkthrough session can
+ * scroll any ttTarget into view.
+ *
+ * Apply this BEFORE [Modifier.verticalScroll] in the modifier chain:
+ * ```kotlin
+ * val scrollState = rememberScrollState()
+ * Column(
+ *     modifier = Modifier
+ *         .fillMaxSize()
+ *         .ttScrollableColumn(scrollState)   // ← here
+ *         .verticalScroll(scrollState)
+ * ) { … }
+ * ```
+ *
+ * The function uses the target's current window-space frame from [TTViewRegistry]
+ * together with the current scroll offset to derive the new scroll position that
+ * places the item roughly 1/3 of the way down the screen.
+ */
+@Composable
+fun Modifier.ttScrollableColumn(scrollState: ScrollState): Modifier {
+    LaunchedEffect(scrollState) {
+        TTScrollBus.events.collect { id ->
+            val frame = TTViewRegistry.frame(id) ?: run {
+                android.util.Log.d("TTScrollBus", "[$id] frame is NULL — not registered yet")
+                return@collect
+            }
+            val screenH = android.content.res.Resources.getSystem()
+                .displayMetrics.heightPixels.toFloat()
+            val currentScroll = scrollState.value
+
+            android.util.Log.d("TTScrollBus", "[$id] frame=$frame screenH=$screenH scroll=$currentScroll maxScroll=${scrollState.maxValue}")
+
+            // Skip if the item is already comfortably visible on screen
+            val margin = screenH * 0.15f
+            if (frame.top >= margin && frame.bottom <= screenH - margin) {
+                android.util.Log.d("TTScrollBus", "[$id] already visible — skipping scroll")
+                return@collect
+            }
+
+            // frame.top is the item's visual position in window space, already accounting
+            // for the current scroll offset (verticalScroll uses placeRelativeWithLayer
+            // which shifts layout coordinates, so boundsInWindow reflects the translated pos).
+            //
+            // Visual pos: frame.top = contentY - currentScroll + containerTop
+            // We want:    contentY - newScroll + containerTop = targetY
+            // Therefore:  newScroll = (frame.top + currentScroll) - targetY
+            val targetY = screenH / 3f
+            val newScroll = (frame.top + currentScroll - targetY)
+                .toInt()
+                .coerceIn(0, scrollState.maxValue.takeIf { it > 0 } ?: Int.MAX_VALUE)
+
+            android.util.Log.d("TTScrollBus", "[$id] targetY=$targetY newScroll=$newScroll (raw=${frame.top + currentScroll - targetY})")
+
+            scrollState.animateScrollTo(newScroll)
+        }
+    }
+    return this
 }

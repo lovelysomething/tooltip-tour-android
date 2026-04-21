@@ -81,45 +81,45 @@ internal class TTWalkthroughSession(
 
     @Composable
     private fun OverlayContent() {
-        val step      = _currentStep.intValue
-        val stepData  = config.steps.getOrNull(step) ?: return
+        val step     = _currentStep.intValue
+        val stepData = config.steps.getOrNull(step) ?: return
         val highlight = _highlightRect.value
-        val density   = LocalDensity.current
+        val density  = LocalDensity.current
 
-        // Animate beacon/card position changes
+        // Animate the spotlight rect smoothly between steps
         val animatedRect by animateValueAsState(
-            targetValue  = highlight ?: Rect.Zero,
+            targetValue   = highlight ?: Rect.Zero,
             typeConverter = RectConverter,
             animationSpec = tween(300),
-            label = "spotlight-rect",
+            label         = "spotlight-rect",
         )
 
-        // Card position: above target if the target is in the lower half, below otherwise.
-        // Compute in pixels from the rect.
-        val screenHeight = with(density) { 800.dp.toPx() } // fallback; actual via BoxWithConstraints
-        val showCardAbove = animatedRect.center.y > screenHeight * 0.55f
-
-        // Beacon position: top-centre of the highlight rect
-        val beaconSizePx = with(density) { 32.dp.toPx() }
-        val beaconX = (animatedRect.left + animatedRect.width / 2f - beaconSizePx / 2f).toInt()
-        val beaconY = (if (showCardAbove) animatedRect.top - beaconSizePx - 8f
-                       else animatedRect.bottom + 8f).toInt()
-
-        val cardPaddingPx = with(density) { 20.dp.toPx() }.toInt()
-        val cardY = if (showCardAbove) {
-            (animatedRect.top - with(density) { 220.dp.toPx() }).toInt().coerceAtLeast(cardPaddingPx)
-        } else {
-            (animatedRect.bottom + beaconSizePx + 16f + with(density) { 8.dp.toPx() }).toInt()
-        }
+        // Gap constants (px)
+        val beaconSizePx  = with(density) { 32.dp.toPx() }
+        val gapTargetPx   = with(density) { 8.dp.toPx() }
+        val gapCardPx     = with(density) { 20.dp.toPx() }
+        val edgePaddingPx = with(density) { 20.dp.toPx() }
 
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
-                    detectTapGestures { /* consume all background touches */ }
+                    detectTapGestures { /* consume all touches */ }
                 },
         ) {
             val maxHeightPx = with(density) { maxHeight.toPx() }
+
+            // Use the ACTUAL (non-animated) target rect to decide which side the card
+            // goes on — prevents the card from jumping sides during the entry animation.
+            val showCardAbove = (highlight ?: Rect.Zero).center.y > maxHeightPx * 0.55f
+
+            // Beacon — centred horizontally on the target, just outside the target edge
+            val beaconX = (animatedRect.left + animatedRect.width / 2f - beaconSizePx / 2f).toInt()
+            val beaconY = if (showCardAbove) {
+                (animatedRect.top - beaconSizePx - gapTargetPx).toInt()
+            } else {
+                (animatedRect.bottom + gapTargetPx).toInt()
+            }
 
             // Spotlight
             TTSpotlightCanvas(
@@ -127,8 +127,9 @@ internal class TTWalkthroughSession(
                 modifier      = Modifier.fillMaxSize(),
             )
 
-            // Beacon
-            if (highlight != null) {
+            // Beacon — only render when the target is actually on screen
+            val beaconOnScreen = highlight != null && beaconY >= 0 && beaconY <= maxHeightPx
+            if (beaconOnScreen) {
                 val beaconStyle = TTBeaconStyle.entries.firstOrNull {
                     it.name.lowercase() == config.styles?.beacon?.style
                 } ?: TTBeaconStyle.NUMBERED
@@ -143,20 +144,48 @@ internal class TTWalkthroughSession(
                 )
             }
 
-            // Step card
-            TTStepCardView(
-                step       = stepData,
-                stepIndex  = step,
-                totalSteps = config.steps.size,
-                styles     = config.styles,
-                onNext     = { advance() },
-                onBack     = { goBack() },
-                onDismiss  = { dismiss() },
-                modifier   = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .offset { IntOffset(0, cardY.coerceIn(cardPaddingPx, (maxHeightPx - 300f).toInt())) },
-            )
+            if (showCardAbove) {
+                // Card sits ABOVE the beacon.
+                // anchor: card.bottom = beaconY - gapCardPx
+                // Strategy: align to BottomCenter of BoxWithConstraints, then shift
+                // UP by (maxHeightPx - cardBottomY) so the card bottom lands exactly
+                // at cardBottomY — works regardless of the card's intrinsic height.
+                val cardBottomY = (beaconY - gapCardPx).coerceAtLeast(edgePaddingPx)
+                val bottomInset = (maxHeightPx - cardBottomY).toInt()
+                TTStepCardView(
+                    step       = stepData,
+                    stepIndex  = step,
+                    totalSteps = config.steps.size,
+                    styles     = config.styles,
+                    onNext     = { advance() },
+                    onBack     = { goBack() },
+                    onDismiss  = { dismiss() },
+                    modifier   = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .align(Alignment.BottomCenter)
+                        .offset { IntOffset(0, -bottomInset) },
+                )
+            } else {
+                // Card sits BELOW the beacon.
+                // anchor: card.top = beaconY + beaconSizePx + gapCardPx
+                val cardY = (beaconY + beaconSizePx + gapCardPx)
+                    .toInt()
+                    .coerceIn(edgePaddingPx.toInt(), (maxHeightPx - 300f).toInt())
+                TTStepCardView(
+                    step       = stepData,
+                    stepIndex  = step,
+                    totalSteps = config.steps.size,
+                    styles     = config.styles,
+                    onNext     = { advance() },
+                    onBack     = { goBack() },
+                    onDismiss  = { dismiss() },
+                    modifier   = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .offset { IntOffset(0, cardY) },
+                )
+            }
         }
     }
 
@@ -166,11 +195,14 @@ internal class TTWalkthroughSession(
         _currentStep.intValue = index
         val selector = config.steps.getOrNull(index)?.selector ?: return
 
-        // Scroll to the target if needed, then update the highlight rect
+        // Scroll to the target if needed, then update the highlight rect.
+        // 800ms covers the default spring scroll animation (~400ms) plus margin.
         scope.launch {
             TTScrollBus.scrollTo(selector)
-            delay(500) // wait for scroll to settle
-            _highlightRect.value = TTViewRegistry.frame(selector)
+            delay(800)
+            val frame = TTViewRegistry.frame(selector)
+            android.util.Log.d("TTWalkthrough", "goToStep[$index] selector=$selector frame=$frame")
+            _highlightRect.value = frame
         }
     }
 

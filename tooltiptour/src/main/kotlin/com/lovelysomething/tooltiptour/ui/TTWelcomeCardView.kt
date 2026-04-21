@@ -59,15 +59,6 @@ fun TTWelcomeCardView(
                 .padding(horizontal = 20.dp, vertical = 20.dp)
                 .fillMaxWidth(),
         ) {
-            // Emoji
-            if (!config.welcomeEmoji.isNullOrBlank()) {
-                Text(
-                    text  = config.welcomeEmoji,
-                    fontSize = 40.sp,
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
-            }
-
             // Title
             if (!config.welcomeTitle.isNullOrBlank()) {
                 Text(
@@ -98,17 +89,24 @@ fun TTWelcomeCardView(
                 colors   = ButtonDefaults.buttonColors(containerColor = btnBg, contentColor = btnText),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 14.dp),
+                    .padding(bottom = 6.dp),
             ) {
                 Text("Yes, show me around!", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
 
             // Don't show again
-            TextButton(onClick = onDontShowAgain) {
+            TextButton(
+                onClick = onDontShowAgain,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    horizontal = 8.dp,
+                    vertical   = 2.dp,
+                ),
+            ) {
                 Text(
-                    text     = "Don't show again",
-                    fontSize = 14.sp,
-                    color    = Color(0xFF9CA3B0.toInt()),
+                    text       = "Don't show again",
+                    fontSize   = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    color      = Color(0xFF9CA3B0.toInt()),
                 )
             }
         }

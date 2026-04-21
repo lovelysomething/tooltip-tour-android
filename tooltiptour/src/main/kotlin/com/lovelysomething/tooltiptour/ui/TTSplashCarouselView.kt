@@ -175,7 +175,7 @@ private fun SlideContent(
                 model              = logoUrl,
                 contentDescription = "Logo",
                 contentScale       = ContentScale.Fit,
-                modifier           = Modifier.size(80.dp),
+                modifier           = Modifier.width(160.dp).height(80.dp),
             )
             Spacer(modifier = Modifier.height(20.dp))
         }
@@ -187,7 +187,7 @@ private fun SlideContent(
                 contentScale       = ContentScale.Crop,
                 modifier           = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(3f / 2f)
+                    .aspectRatio(1f)
                     .clip(RoundedCornerShape(12.dp)),
             )
             Spacer(modifier = Modifier.height(24.dp))

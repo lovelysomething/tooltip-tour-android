@@ -3,8 +3,8 @@ package com.lovelysomething.tooltiptour.registry
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import java.util.concurrent.ConcurrentHashMap
 
@@ -60,6 +60,16 @@ fun Modifier.ttTarget(identifier: String): Modifier = composed {
         onDispose { TTViewRegistry.unregister(identifier) }
     }
     onGloballyPositioned { coords ->
-        TTViewRegistry.register(identifier, coords.boundsInWindow())
+        // boundsInWindow() is clipped by verticalScroll containers, so items below
+        // the fold report Rect.Zero. Use localToWindow + size instead — positionInWindow()
+        // and localToWindow() are NOT affected by ancestor clip regions.
+        val topLeft = coords.localToWindow(Offset.Zero)
+        val rect = Rect(
+            left   = topLeft.x,
+            top    = topLeft.y,
+            right  = topLeft.x + coords.size.width,
+            bottom = topLeft.y + coords.size.height,
+        )
+        TTViewRegistry.register(identifier, rect)
     }
 }

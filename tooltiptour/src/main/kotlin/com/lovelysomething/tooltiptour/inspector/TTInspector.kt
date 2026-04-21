@@ -146,17 +146,7 @@ internal class TTInspector(
                 }
             }
 
-            // ── Bottom sheet confirm card ──────────────────────────────────────
-            AnimatedVisibility(
-                visible  = phase == InspectorPhase.CONFIRMING || phase == InspectorPhase.DONE,
-                enter    = slideInVertically { it } + fadeIn(tween(200)),
-                exit     = slideOutVertically { it } + fadeOut(tween(200)),
-                modifier = Modifier.align(Alignment.BottomCenter),
-            ) {
-                ConfirmCard(brandColor = brandColor)
-            }
-
-            // Dim when confirming
+            // Dim when confirming — drawn BEFORE the card so it appears behind it
             if (phase == InspectorPhase.CONFIRMING || phase == InspectorPhase.DONE) {
                 Box(
                     modifier = Modifier
@@ -164,6 +154,16 @@ internal class TTInspector(
                         .background(Color.Black.copy(alpha = 0.45f))
                         .pointerInput(Unit) { detectTapGestures { } },
                 )
+            }
+
+            // ── Bottom sheet confirm card — drawn AFTER dim so it's on top ─────
+            AnimatedVisibility(
+                visible  = phase == InspectorPhase.CONFIRMING || phase == InspectorPhase.DONE,
+                enter    = slideInVertically { it } + fadeIn(tween(200)),
+                exit     = slideOutVertically { it } + fadeOut(tween(200)),
+                modifier = Modifier.align(Alignment.BottomCenter),
+            ) {
+                ConfirmCard(brandColor = brandColor)
             }
 
             // ── Top banner ─────────────────────────────────────────────────────
