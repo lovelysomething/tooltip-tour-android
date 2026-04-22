@@ -87,7 +87,7 @@ fun TTSplashCarouselView(
                         onHorizontalDrag = { _, amount ->
                             // Normalise drag to [-1, 1] range so offset formula is clean.
                             scope.launch {
-                                val raw = dragOffset.value - amount / containerWidth
+                                val raw = dragOffset.value + amount / containerWidth
                                 dragOffset.snapTo(raw.coerceIn(-1f, 1f))
                             }
                         },
