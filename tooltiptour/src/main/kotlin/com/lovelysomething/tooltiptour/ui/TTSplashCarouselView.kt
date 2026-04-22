@@ -1,7 +1,10 @@
 package com.lovelysomething.tooltiptour.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,18 +19,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.lovelysomething.tooltiptour.models.TTSplashCarousel
+import kotlinx.coroutines.launch
 
 /**
  * Full-screen carousel shown before the normal tour welcome card.
- * Navigation via dot row, ← Back, and Next → / Done buttons.
+ * Navigation via horizontal swipe, dot row, ← Back, and Next → / Done buttons.
  *
  * Callbacks:
  * - [onDone]    — last slide completed (Done tapped)
@@ -46,23 +52,95 @@ fun TTSplashCarouselView(
     val textColor = parseCarouselColor(carousel.textColor, Color.White)
     val pageCount = slides.size
     var currentPage by remember { mutableStateOf(0) }
+    val dragOffset  = remember { Animatable(0f) }
+    val scope       = rememberCoroutineScope()
 
-    Box(
+    // Animate to adjacent page then snap offset back to 0.
+    fun animateTo(target: Int) {
+        if (target == currentPage) return
+        val direction = if (target > currentPage) -1f else 1f
+        scope.launch {
+            dragOffset.animateTo(
+                targetValue   = direction,  // -1f = left (next), +1f = right (prev) — normalised
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = 400f),
+            )
+            currentPage = target
+            dragOffset.snapTo(0f)
+        }
+    }
+
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(bgColor),
     ) {
-        // ── Current slide ─────────────────────────────────────────────────────
-        val slide = slides[currentPage]
-        SlideContent(
-            logoUrl     = slide.logoUrl,
-            imageUrl    = slide.imageUrl,
-            title       = slide.title,
-            description = slide.description,
-            textColor   = textColor,
-        )
+        val containerWidth = constraints.maxWidth.toFloat()
 
-        // ── Dismiss button ────────────────────────────────────────────────────
+        // ── Slide layer (horizontal swipe) ────────────────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                // Clip so adjacent slides don't bleed outside the viewport.
+                .clip(RoundedCornerShape(0.dp))
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { _, amount ->
+                            // Normalise drag to [-1, 1] range so offset formula is clean.
+                            scope.launch {
+                                val raw = dragOffset.value - amount / containerWidth
+                                dragOffset.snapTo(raw.coerceIn(-1f, 1f))
+                            }
+                        },
+                        onDragEnd = {
+                            val offset = dragOffset.value
+                            when {
+                                offset < -0.25f && currentPage < pageCount - 1 -> {
+                                    scope.launch {
+                                        dragOffset.animateTo(-1f, animationSpec = spring(dampingRatio = 0.85f, stiffness = 400f))
+                                        currentPage++
+                                        dragOffset.snapTo(0f)
+                                    }
+                                }
+                                offset > 0.25f && currentPage > 0 -> {
+                                    scope.launch {
+                                        dragOffset.animateTo(1f, animationSpec = spring(dampingRatio = 0.85f, stiffness = 400f))
+                                        currentPage--
+                                        dragOffset.snapTo(0f)
+                                    }
+                                }
+                                else -> scope.launch {
+                                    dragOffset.animateTo(0f, animationSpec = spring(dampingRatio = 0.85f, stiffness = 400f))
+                                }
+                            }
+                        },
+                        onDragCancel = {
+                            scope.launch { dragOffset.animateTo(0f, animationSpec = spring()) }
+                        },
+                    )
+                },
+        ) {
+            slides.forEachIndexed { index, slide ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .offset {
+                            // Each slide is offset by (index - currentPage) pages + drag fraction.
+                            val px = ((index - currentPage) + dragOffset.value) * containerWidth
+                            IntOffset(px.toInt(), 0)
+                        },
+                ) {
+                    SlideContent(
+                        logoUrl     = slide.logoUrl,
+                        imageUrl    = slide.imageUrl,
+                        title       = slide.title,
+                        description = slide.description,
+                        textColor   = textColor,
+                    )
+                }
+            }
+        }
+
+        // ── Dismiss button ────────────────────────────────────────────────
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
@@ -80,7 +158,7 @@ fun TTSplashCarouselView(
             Text("✕", color = textColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
 
-        // ── Bottom nav row ────────────────────────────────────────────────────
+        // ── Bottom nav row ────────────────────────────────────────────────
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -104,7 +182,7 @@ fun TTSplashCarouselView(
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
-                                ) { currentPage = i },
+                                ) { animateTo(i) },
                         )
                     }
                 }
@@ -127,7 +205,7 @@ fun TTSplashCarouselView(
                         modifier = Modifier.clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                        ) { currentPage-- },
+                        ) { animateTo(currentPage - 1) },
                     )
                 } else {
                     Spacer(Modifier.width(64.dp))
@@ -135,7 +213,10 @@ fun TTSplashCarouselView(
 
                 val isLast = currentPage == pageCount - 1
                 Button(
-                    onClick = { if (isLast) onDone() else currentPage++ },
+                    onClick = {
+                        if (isLast) onDone()
+                        else animateTo(currentPage + 1)
+                    },
                     colors  = ButtonDefaults.buttonColors(
                         containerColor = textColor,
                         contentColor   = bgColor,
