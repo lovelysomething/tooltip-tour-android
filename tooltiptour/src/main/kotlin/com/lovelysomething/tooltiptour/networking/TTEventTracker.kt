@@ -13,6 +13,10 @@ enum class TTEventType(val value: String) {
     STEP_VIEWED("step_viewed"),
     GUIDE_COMPLETED("guide_completed"),
     GUIDE_DISMISSED("guide_dismissed"),
+    CAROUSEL_SHOWN("carousel_shown"),
+    CAROUSEL_SLIDE_VIEWED("carousel_slide_viewed"),
+    CAROUSEL_COMPLETED("carousel_completed"),
+    CAROUSEL_DISMISSED("carousel_dismissed"),
 }
 
 /** Fire-and-forget event tracker — mirrors iOS TTEventTracker exactly. */

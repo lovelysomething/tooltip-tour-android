@@ -43,6 +43,7 @@ import kotlinx.coroutines.launch
 fun TTSplashCarouselView(
     carousel: TTSplashCarousel,
     btnCornerRadius: Float = 8f,
+    onSlideViewed: (Int) -> Unit = {},
     onDone: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -55,6 +56,9 @@ fun TTSplashCarouselView(
     var currentPage by remember { mutableStateOf(0) }
     val dragOffset  = remember { Animatable(0f) }
     val scope       = rememberCoroutineScope()
+
+    // Fire onSlideViewed whenever the page changes (including the initial page 0).
+    LaunchedEffect(currentPage) { onSlideViewed(currentPage) }
 
     // Animate to adjacent page then snap offset back to 0.
     fun animateTo(target: Int) {

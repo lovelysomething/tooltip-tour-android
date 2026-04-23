@@ -35,7 +35,7 @@ import com.lovelysomething.tooltiptour.registry.TTViewRegistry
 import kotlinx.coroutines.*
 
 enum class TTInspectorMode { ELEMENT, PAGE }
-private enum class InspectorMode { NAVIGATE, HIGHLIGHT, SELECT }
+private enum class InspectorMode { NAVIGATE, HIGHLIGHT }
 private enum class InspectorPhase { TAPPING, CONFIRMING, DONE }
 
 /**
@@ -93,7 +93,7 @@ internal class TTInspector(
             modifier = Modifier
                 .fillMaxSize()
                 .then(
-                    if (inspMode == InspectorMode.SELECT || inspMode == InspectorMode.HIGHLIGHT)
+                    if (inspMode == InspectorMode.HIGHLIGHT)
                         Modifier.pointerInput(inspMode) {
                             detectTapGestures { offset ->
                                 if (phase == InspectorPhase.TAPPING) {
@@ -104,11 +104,6 @@ internal class TTInspector(
                     else Modifier
                 )
         ) {
-            // Subtle blue tint in Select mode
-            if (inspMode == InspectorMode.SELECT && phase == InspectorPhase.TAPPING) {
-                Box(modifier = Modifier.fillMaxSize().background(Color.Blue.copy(alpha = 0.04f)))
-            }
-
             // Highlight mode: draw colored borders around all registered views
             if (inspMode == InspectorMode.HIGHLIGHT) {
                 allFrames.forEach { (id, rect) ->
@@ -288,8 +283,8 @@ internal class TTInspector(
                         letterSpacing = 1.sp)
                 }
             } else {
-                // Navigate / Highlight / Select tabs
-                val tabs = listOf("Navigate" to InspectorMode.NAVIGATE, "Highlight" to InspectorMode.HIGHLIGHT, "Select" to InspectorMode.SELECT)
+                // Navigate / Highlight tabs
+                val tabs = listOf("Navigate" to InspectorMode.NAVIGATE, "Highlight" to InspectorMode.HIGHLIGHT)
                 Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     tabs.forEach { (label, tabMode) ->
                         val selected = mode == tabMode

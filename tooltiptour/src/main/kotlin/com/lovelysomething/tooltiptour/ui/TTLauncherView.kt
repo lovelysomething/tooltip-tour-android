@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lovelysomething.tooltiptour.TooltipTour
 import com.lovelysomething.tooltiptour.models.TTConfig
+import com.lovelysomething.tooltiptour.networking.TTEventType
 import com.lovelysomething.tooltiptour.registry.TTPageRegistry
 
 private enum class LauncherState { HIDDEN, LOADING, CAROUSEL, WELCOME, FAB }
@@ -107,6 +108,7 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
                 prefs.edit().putInt("tt-carousel-shows-$id", carouselShows + 1).apply()
                 carouselShownThisSession = true
                 launcherState = LauncherState.CAROUSEL
+                sdk.tracker?.track(TTEventType.CAROUSEL_SHOWN, cfg.id, sdk.siteKey)
                 return@LaunchedEffect
             }
         }
@@ -205,8 +207,17 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
                 TTSplashCarouselView(
                     carousel        = carousel,
                     btnCornerRadius = cfg.styles?.btnCornerRadius ?: 8f,
-                    onDone          = { launcherState = LauncherState.HIDDEN; continueAfterCarousel() },
-                    onDismiss       = { launcherState = LauncherState.HIDDEN; continueAfterCarousel() },
+                    onSlideViewed   = { index ->
+                        sdk.tracker?.track(TTEventType.CAROUSEL_SLIDE_VIEWED, cfg.id, sdk.siteKey, index)
+                    },
+                    onDone          = {
+                        sdk.tracker?.track(TTEventType.CAROUSEL_COMPLETED, cfg.id, sdk.siteKey)
+                        launcherState = LauncherState.HIDDEN; continueAfterCarousel()
+                    },
+                    onDismiss       = {
+                        sdk.tracker?.track(TTEventType.CAROUSEL_DISMISSED, cfg.id, sdk.siteKey)
+                        launcherState = LauncherState.HIDDEN; continueAfterCarousel()
+                    },
                 )
             }
         }
