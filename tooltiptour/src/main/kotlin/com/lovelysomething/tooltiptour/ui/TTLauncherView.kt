@@ -100,7 +100,7 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
         // ── Carousel check (fires before welcome card) ────────────────────
         val carousel = cfg.splashCarousel
         android.util.Log.d("TTLauncher", "carousel=${carousel != null} slides=${carousel?.slides?.size ?: 0} shownThisSession=$carouselShownThisSession carouselMaxShows=${carousel?.maxShows} carouselShowCount=${prefs.getInt("tt-carousel-shows-$id", 0)}")
-        if (carousel != null && carousel.slides.isNotEmpty() && !carouselShownThisSession) {
+        if (carousel != null && carousel.slides.isNotEmpty() && !carouselShownThisSession && !isDismissed) {
             val carouselShows = prefs.getInt("tt-carousel-shows-$id", 0)
             val carouselMaxReached = carousel.maxShows?.let { carouselShows >= it } ?: false
             if (!carouselMaxReached) {
@@ -203,9 +203,10 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
         ) {
             cfg.splashCarousel?.let { carousel ->
                 TTSplashCarouselView(
-                    carousel  = carousel,
-                    onDone    = { launcherState = LauncherState.HIDDEN; continueAfterCarousel() },
-                    onDismiss = { launcherState = LauncherState.HIDDEN; continueAfterCarousel() },
+                    carousel        = carousel,
+                    btnCornerRadius = cfg.styles?.btnCornerRadius ?: 8f,
+                    onDone          = { launcherState = LauncherState.HIDDEN; continueAfterCarousel() },
+                    onDismiss       = { launcherState = LauncherState.HIDDEN; continueAfterCarousel() },
                 )
             }
         }

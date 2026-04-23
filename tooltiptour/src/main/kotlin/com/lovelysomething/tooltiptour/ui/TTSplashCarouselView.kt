@@ -42,6 +42,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun TTSplashCarouselView(
     carousel: TTSplashCarousel,
+    btnCornerRadius: Float = 8f,
     onDone: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -198,7 +199,7 @@ fun TTSplashCarouselView(
             ) {
                 if (currentPage > 0) {
                     Text(
-                        text = "← Back",
+                        text = "Back",
                         color = textColor.copy(alpha = 0.65f),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
@@ -217,6 +218,7 @@ fun TTSplashCarouselView(
                         if (isLast) onDone()
                         else animateTo(currentPage + 1)
                     },
+                    shape  = RoundedCornerShape(btnCornerRadius.dp),
                     colors  = ButtonDefaults.buttonColors(
                         containerColor = textColor,
                         contentColor   = bgColor,
@@ -224,7 +226,7 @@ fun TTSplashCarouselView(
                     modifier = Modifier.widthIn(min = 100.dp),
                 ) {
                     Text(
-                        text       = if (isLast) "Done" else "Next →",
+                        text       = if (isLast) "Done" else "Next",
                         fontWeight = FontWeight.Bold,
                         fontSize   = 14.sp,
                     )

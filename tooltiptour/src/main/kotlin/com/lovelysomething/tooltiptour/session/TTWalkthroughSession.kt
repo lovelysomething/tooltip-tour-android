@@ -193,6 +193,7 @@ internal class TTWalkthroughSession(
 
     private fun goToStep(index: Int) {
         _currentStep.intValue = index
+        tracker.track(TTEventType.STEP_VIEWED, config.id, siteKey, index)
         val selector = config.steps.getOrNull(index)?.selector ?: return
 
         // Scroll to the target if needed, then update the highlight rect.
@@ -208,7 +209,6 @@ internal class TTWalkthroughSession(
 
     private fun advance() {
         val next = _currentStep.intValue + 1
-        tracker.track(TTEventType.STEP_COMPLETED, config.id, siteKey, _currentStep.intValue)
         if (next >= config.steps.size) {
             tracker.track(TTEventType.GUIDE_COMPLETED, config.id, siteKey)
             dismiss()

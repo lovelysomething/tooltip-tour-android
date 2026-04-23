@@ -1,0 +1,166 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.github.lovelysomething",
+    "module": "tooltip-tour-android",
+    "version": "1.1.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.7"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "1.9.24"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "tooltip-tour-android-1.1.0.aar",
+          "url": "tooltip-tour-android-1.1.0.aar",
+          "size": 382362,
+          "sha512": "f37112fefe3f28b0e0c5cec850b4d57ae0e5b8c2587cd7adf69821f9cb9d738ae589e2a71fb6d0e0136d1da97112656515757440136a78c29b7a6632a7df2b4e",
+          "sha256": "39ce8754dafbb632b7c15c26cd73d87330c0466d0f92dfb89ab1235c3f14fc36",
+          "sha1": "79c45d7af417fcb6cac378bf72b2f6235420e480",
+          "md5": "8cf0668a64460d20cf65e90d171c8ffb"
+        }
+      ]
+    },
+    {
+      "name": "releaseRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "dependencies": [
+        {
+          "group": "androidx.compose",
+          "module": "compose-bom",
+          "version": {
+            "requires": "2024.06.00"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          },
+          "endorseStrictVersions": true
+        },
+        {
+          "group": "androidx.compose.ui",
+          "module": "ui"
+        },
+        {
+          "group": "androidx.compose.ui",
+          "module": "ui-graphics"
+        },
+        {
+          "group": "androidx.compose.ui",
+          "module": "ui-tooling-preview"
+        },
+        {
+          "group": "androidx.compose.material3",
+          "module": "material3"
+        },
+        {
+          "group": "androidx.compose.foundation",
+          "module": "foundation"
+        },
+        {
+          "group": "androidx.compose.animation",
+          "module": "animation"
+        },
+        {
+          "group": "androidx.activity",
+          "module": "activity-compose",
+          "version": {
+            "requires": "1.9.0"
+          }
+        },
+        {
+          "group": "androidx.lifecycle",
+          "module": "lifecycle-runtime-ktx",
+          "version": {
+            "requires": "2.8.2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-serialization-json",
+          "version": {
+            "requires": "1.6.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlinx",
+          "module": "kotlinx-coroutines-android",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "io.coil-kt",
+          "module": "coil-compose",
+          "version": {
+            "requires": "2.6.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "1.9.24"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "tooltip-tour-android-1.1.0.aar",
+          "url": "tooltip-tour-android-1.1.0.aar",
+          "size": 382362,
+          "sha512": "f37112fefe3f28b0e0c5cec850b4d57ae0e5b8c2587cd7adf69821f9cb9d738ae589e2a71fb6d0e0136d1da97112656515757440136a78c29b7a6632a7df2b4e",
+          "sha256": "39ce8754dafbb632b7c15c26cd73d87330c0466d0f92dfb89ab1235c3f14fc36",
+          "sha1": "79c45d7af417fcb6cac378bf72b2f6235420e480",
+          "md5": "8cf0668a64460d20cf65e90d171c8ffb"
+        }
+      ]
+    },
+    {
+      "name": "releaseSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "files": [
+        {
+          "name": "tooltip-tour-android-1.1.0-sources.jar",
+          "url": "tooltip-tour-android-1.1.0-sources.jar",
+          "size": 101174,
+          "sha512": "261f4a097227b130fa05333f59551fe2fe8247b5799dddffedffb28d5b7ef9627c8f1e7a3b1f3a2e5c3e915e796842ef0261e1328f998a572b0d97132493e4a8",
+          "sha256": "146c4d268452f64d40acc0f588a3e7d23d382cbccd473470441793093320a1bb",
+          "sha1": "3b368d456acfe736d5e6ed683435fa53468aad50",
+          "md5": "345179e5120a3340d5a727c69b4bb080"
+        }
+      ]
+    }
+  ]
+}

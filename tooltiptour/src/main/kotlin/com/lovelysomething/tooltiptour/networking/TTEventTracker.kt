@@ -9,7 +9,8 @@ import java.util.UUID
 
 enum class TTEventType(val value: String) {
     GUIDE_SHOWN("guide_shown"),
-    STEP_COMPLETED("step_completed"),
+    GUIDE_STARTED("guide_started"),
+    STEP_VIEWED("step_viewed"),
     GUIDE_COMPLETED("guide_completed"),
     GUIDE_DISMISSED("guide_dismissed"),
 }

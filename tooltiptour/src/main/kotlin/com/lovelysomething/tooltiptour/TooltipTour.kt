@@ -7,6 +7,7 @@ import com.lovelysomething.tooltiptour.inspector.TTInspector
 import com.lovelysomething.tooltiptour.inspector.TTInspectorMode
 import com.lovelysomething.tooltiptour.models.TTConfig
 import com.lovelysomething.tooltiptour.networking.TTEventTracker
+import com.lovelysomething.tooltiptour.networking.TTEventType
 import com.lovelysomething.tooltiptour.networking.TTNetworkClient
 import com.lovelysomething.tooltiptour.session.TTWalkthroughSession
 import kotlinx.coroutines.*
@@ -205,6 +206,7 @@ class TooltipTour private constructor() {
         }
         activeSession = session
         _isSessionActive.value = true
+        t.track(TTEventType.GUIDE_STARTED, config.id, siteKey)
         session.start(activity)
     }
 
