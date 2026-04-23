@@ -1,6 +1,6 @@
 # Tooltip Tour — Android SDK
 
-Native Kotlin SDK for [Tooltip Tour](https://app.lovelysomething.com) — the guided walkthrough tool for web, iOS, and Android.
+Native Kotlin SDK for [Tooltip Tour](https://app.lovelysomething.com) — the guided walkthrough tool for web, iOS, Android, and React Native.
 
 ---
 
@@ -116,6 +116,13 @@ In `AndroidManifest.xml` (inside your launcher `<activity>`):
 </intent-filter>
 ```
 
+The dashboard generates a QR code you scan with your device to launch the inspector.
+
+The inspector has two modes:
+
+- **Navigate** — touches pass through to your app; scroll and explore freely
+- **Highlight** — blue outlines appear over every registered `.ttTarget()` composable; tap one to capture its identifier
+
 ---
 
 ## Scrollable lists
@@ -152,10 +159,10 @@ To generate the Gradle wrapper after cloning: `gradle wrapper --gradle-version 8
 
 ---
 
-## iOS SDK
+## Other SDKs
 
-The equivalent iOS SDK (Swift/SwiftUI) lives at
-[tooltip-tour-ios](https://github.com/lovelysomething/tooltip-tour-ios).
+- [tooltip-tour-ios](https://github.com/lovelysomething/tooltip-tour-ios) — Swift/SwiftUI
+- [tooltip-tour-react-native](https://github.com/lovelysomething/tooltip-tour-react-native) — Pure JS, Expo-compatible
 
 ---
 
