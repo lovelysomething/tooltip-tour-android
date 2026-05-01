@@ -88,6 +88,15 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
             launcherState = LauncherState.HIDDEN
             return@LaunchedEffect
         }
+
+        // ── Prior-tour display condition (element condition N/A on Android) ─
+        cfg.displayConditions?.priorTourCondition?.let { dc ->
+            val seen = prefs.getInt("tt-shows-${dc.tourId}", 0) > 0
+            val done = prefs.getBoolean("tt-completed-${dc.tourId}", false)
+            if (dc.rule == "seen"      && !seen) { launcherState = LauncherState.HIDDEN; return@LaunchedEffect }
+            if (dc.rule == "completed" && !done) { launcherState = LauncherState.HIDDEN; return@LaunchedEffect }
+        }
+
         config = cfg
 
         val id           = cfg.id

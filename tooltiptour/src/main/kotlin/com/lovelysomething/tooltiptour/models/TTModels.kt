@@ -7,6 +7,24 @@ import kotlinx.serialization.Serializable
 // ── API response models ────────────────────────────────────────────────────────
 
 @Serializable
+data class TTElementCondition(
+    val selector: String,
+    val rule: String,   // "exists" | "not_exists"
+)
+
+@Serializable
+data class TTTourCondition(
+    val tourId: String,
+    val rule: String,   // "seen" | "completed"
+)
+
+@Serializable
+data class TTDisplayConditions(
+    val elementCondition:   TTElementCondition? = null,
+    val priorTourCondition: TTTourCondition?    = null,
+)
+
+@Serializable
 data class TTConfig(
     val id: String,
     val pagePattern: String? = null,
@@ -20,6 +38,7 @@ data class TTConfig(
     val steps: List<TTStep> = emptyList(),
     val styles: TTStyles? = null,
     val splashCarousel: TTSplashCarousel? = null,
+    val displayConditions: TTDisplayConditions? = null,
 )
 
 @Serializable

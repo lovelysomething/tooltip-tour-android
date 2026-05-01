@@ -211,7 +211,10 @@ internal class TTWalkthroughSession(
         val next = _currentStep.intValue + 1
         if (next >= config.steps.size) {
             tracker.track(TTEventType.GUIDE_COMPLETED, config.id, siteKey)
-            dismiss()
+            // Mark tour as completed so prior-tour display conditions can reference it
+            currentActivity?.getSharedPreferences("tooltiptour", android.content.Context.MODE_PRIVATE)
+                ?.edit()?.putBoolean("tt-completed-${config.id}", true)?.apply()
+            tearDown()
         } else {
             goToStep(next)
         }
