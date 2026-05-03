@@ -34,6 +34,8 @@ data class TTConfig(
     val welcomeMessage: String? = null,
     val autoOpen: Boolean = false,
     val startMinimized: Boolean = false,
+    /** "full" (default) shows the welcome card popup; "button" starts the tour directly when FAB is tapped. */
+    val welcomeMode: String? = null,
     val maxShows: Int? = null,
     val steps: List<TTStep> = emptyList(),
     val styles: TTStyles? = null,

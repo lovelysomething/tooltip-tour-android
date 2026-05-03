@@ -289,7 +289,13 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
                         val maxReached = cfg.maxShows != null && showCount >= cfg.maxShows
                         if (!maxReached) {
                             prefs.edit().putInt("tt-shows-${cfg.id}", showCount + 1).apply()
-                            launcherState = LauncherState.WELCOME
+                            if (cfg.welcomeMode == "button") {
+                                // Button-only mode: skip welcome card, launch tour directly
+                                launcherState = LauncherState.HIDDEN
+                                sdk.startSession(cfg)
+                            } else {
+                                launcherState = LauncherState.WELCOME
+                            }
                         }
                     },
             ) {
