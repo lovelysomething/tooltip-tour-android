@@ -91,7 +91,7 @@ fun TTWelcomeCardView(
                     .fillMaxWidth()
                     .padding(bottom = 6.dp),
             ) {
-                Text("Yes, show me around!", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(config.welcomeCtaLabel ?: "Yes, show me around!", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
 
             // Don't show again
@@ -103,7 +103,7 @@ fun TTWelcomeCardView(
                 ),
             ) {
                 Text(
-                    text       = "Don't show again",
+                    text       = config.welcomeDismissLabel ?: "Don't show again",
                     fontSize   = 14.sp,
                     fontWeight = FontWeight.Normal,
                     color      = Color(0xFF9CA3B0.toInt()),
