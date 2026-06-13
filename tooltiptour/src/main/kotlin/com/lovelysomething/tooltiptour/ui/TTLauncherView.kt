@@ -50,7 +50,9 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
     var config         by remember { mutableStateOf<TTConfig?>(null) }
     var launcherState  by remember { mutableStateOf(LauncherState.HIDDEN) }
     val scope          = rememberCoroutineScope()
-    var carouselShownThisSession by remember { mutableStateOf(false) }
+    // Tour ids whose carousel has shown this session — per tour, so a second
+    // tour's carousel still fires (a single flag blocked all but the first).
+    val carouselsShownThisSession = remember { mutableSetOf<String>() }
 
     // Observe inspector-active state so we suppress auto-launch during inspection
     val isInspectorActive by sdk.isInspectorActiveFlow.collectAsState()
@@ -129,13 +131,13 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
 
         // ── Carousel check (fires before welcome card) ────────────────────
         val carousel = cfg.splashCarousel
-        android.util.Log.d("TTLauncher", "carousel=${carousel != null} slides=${carousel?.slides?.size ?: 0} shownThisSession=$carouselShownThisSession carouselMaxShows=${carousel?.maxShows} carouselShowCount=${prefs.getInt("tt-carousel-shows-$id", 0)}")
-        if (carousel != null && carousel.slides.isNotEmpty() && !carouselShownThisSession && !isDismissed) {
+        android.util.Log.d("TTLauncher", "carousel=${carousel != null} slides=${carousel?.slides?.size ?: 0} shownThisSession=${carouselsShownThisSession.contains(id)} carouselMaxShows=${carousel?.maxShows} carouselShowCount=${prefs.getInt("tt-carousel-shows-$id", 0)}")
+        if (carousel != null && carousel.slides.isNotEmpty() && !carouselsShownThisSession.contains(id) && !isDismissed) {
             val carouselShows = prefs.getInt("tt-carousel-shows-$id", 0)
             val carouselMaxReached = carousel.maxShows?.let { carouselShows >= it } ?: false
             if (!carouselMaxReached) {
                 prefs.edit().putInt("tt-carousel-shows-$id", carouselShows + 1).apply()
-                carouselShownThisSession = true
+                carouselsShownThisSession.add(id)
                 launcherState = LauncherState.CAROUSEL
                 sdk.tracker?.track(TTEventType.CAROUSEL_SHOWN, cfg.id, sdk.siteKey)
                 return@LaunchedEffect
@@ -145,6 +147,14 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
         when {
             isDismissed || maxReached -> launcherState = LauncherState.HIDDEN
             cfg.startMinimized || isMinimised -> launcherState = LauncherState.FAB
+            // Auto-open disabled — show the FAB; user taps to begin.
+            !cfg.autoOpen -> launcherState = LauncherState.FAB
+            // Button-only mode: skip the welcome card, start the tour directly.
+            cfg.welcomeMode == "button" -> {
+                prefs.edit().putInt("tt-shows-$id", showCount + 1).apply()
+                launcherState = LauncherState.HIDDEN
+                sdk.startSession(cfg)
+            }
             else -> {
                 launcherState = LauncherState.WELCOME
                 prefs.edit().putInt("tt-shows-$id", showCount + 1).apply()
@@ -218,6 +228,14 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
                 cfg.steps.isEmpty()               -> launcherState = LauncherState.FAB
                 isDismissed || maxReached         -> launcherState = LauncherState.HIDDEN
                 cfg.startMinimized || sdk.isSessionMinimised(id) -> launcherState = LauncherState.FAB
+                // Auto-open disabled — show the FAB; user taps to begin.
+                !cfg.autoOpen                     -> launcherState = LauncherState.FAB
+                // Button-only mode: skip the welcome card, start the tour directly.
+                cfg.welcomeMode == "button"       -> {
+                    prefs.edit().putInt("tt-shows-$id", showCount + 1).apply()
+                    launcherState = LauncherState.HIDDEN
+                    sdk.startSession(cfg)
+                }
                 else -> {
                     prefs.edit().putInt("tt-shows-$id", showCount + 1).apply()
                     launcherState = LauncherState.WELCOME
