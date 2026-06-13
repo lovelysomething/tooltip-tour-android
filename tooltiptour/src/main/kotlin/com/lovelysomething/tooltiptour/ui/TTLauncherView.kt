@@ -97,6 +97,26 @@ fun TTLauncherView(modifier: Modifier = Modifier) {
             if (dc.rule == "completed" && !done) { launcherState = LauncherState.HIDDEN; return@LaunchedEffect }
         }
 
+        // ── Date-range display condition ─────────────────────────────────
+        cfg.displayConditions?.dateRange?.let { dr ->
+            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            val now = java.util.Date()
+            val fromDate = dr.from?.let { runCatching { fmt.parse(it) }.getOrNull() }
+            if (fromDate != null && now.before(fromDate)) {
+                launcherState = LauncherState.HIDDEN; return@LaunchedEffect
+            }
+            val toDate = dr.to?.let { runCatching { fmt.parse(it) }.getOrNull() }
+            if (toDate != null) {
+                val endOfDay = java.util.Calendar.getInstance().apply {
+                    time = toDate
+                    set(java.util.Calendar.HOUR_OF_DAY, 23)
+                    set(java.util.Calendar.MINUTE, 59)
+                    set(java.util.Calendar.SECOND, 59)
+                }.time
+                if (now.after(endOfDay)) { launcherState = LauncherState.HIDDEN; return@LaunchedEffect }
+            }
+        }
+
         config = cfg
 
         val id           = cfg.id

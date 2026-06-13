@@ -19,9 +19,16 @@ data class TTTourCondition(
 )
 
 @Serializable
+data class TTDateRange(
+    val from: String? = null,   // "yyyy-MM-dd"
+    val to:   String? = null,   // "yyyy-MM-dd"
+)
+
+@Serializable
 data class TTDisplayConditions(
     val elementCondition:   TTElementCondition? = null,
     val priorTourCondition: TTTourCondition?    = null,
+    val dateRange:          TTDateRange?        = null,
 )
 
 @Serializable
