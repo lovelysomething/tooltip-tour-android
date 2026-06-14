@@ -7,7 +7,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.platform.LocalConfiguration
+import kotlin.math.roundToInt
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -261,15 +264,42 @@ internal class TTInspector(
         mode: InspectorMode,
         onModeChange: (InspectorMode) -> Unit,
     ) {
+        // Draggable vertically so the user can move the bar off content they
+        // want to tap at the very top of the screen (mirrors iOS pan + RN drag).
+        val density   = LocalDensity.current
+        val config    = LocalConfiguration.current
+        val basePadPx = with(density) { 48.dp.toPx() }
+        val barHpx    = with(density) { 48.dp.toPx() }
+        val minOffset = -(basePadPx - with(density) { 8.dp.toPx() })          // up to ~8dp from the top
+        val maxOffset = with(density) { (config.screenHeightDp.dp.toPx()) } - basePadPx - barHpx - with(density) { 24.dp.toPx() }
+        var dragOffsetY by remember { mutableStateOf(0f) }
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
+                .offset { IntOffset(0, dragOffsetY.roundToInt()) }
                 .padding(top = 48.dp, start = 16.dp, end = 16.dp)
                 .background(brandColor, RoundedCornerShape(0.dp))
-                .padding(horizontal = 16.dp)
+                .padding(start = 12.dp, end = 16.dp)
                 .height(48.dp),
         ) {
+            // ↕ drag handle
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .height(48.dp)
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            dragOffsetY = (dragOffsetY + dragAmount.y).coerceIn(minOffset, maxOffset)
+                        }
+                    },
+            ) {
+                Text("↕", color = Color.White.copy(alpha = 0.6f), fontSize = 16.sp)
+            }
+
             if (this@TTInspector.mode == TTInspectorMode.PAGE) {
                 Text(
                     "Navigate to your screen",
